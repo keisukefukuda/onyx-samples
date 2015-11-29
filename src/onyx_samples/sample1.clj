@@ -72,8 +72,6 @@
     :lifecycle/calls :onyx.plugin.core-async/writer-calls}
    ])
 
-(def flow-conditions [])
-
 (def onyx-id (java.util.UUID/randomUUID))
 
 (def env-config
@@ -86,7 +84,7 @@
   {:zookeeper/address "127.0.0.1:2190"
    :onyx.peer/job-scheduler :onyx.job-scheduler/balanced
    :onyx.messaging/impl :aeron
-   :onyx.messaging/peer-port 40200
+   :onyx.messaging/peer-port 40201
    :onyx.messaging/bind-addr "localhost"
    :onyx/id onyx-id})
 
@@ -134,7 +132,6 @@
   (let [job {:workflow workflow
              :catalog catalog
              :lifecycles lifecycles
-             ;;:flow-conditions flow-conditions
              :task-scheduler :onyx.task-scheduler/balanced}]
     (println "Submitting")
     (onyx.api/submit-job peer-config job)))
