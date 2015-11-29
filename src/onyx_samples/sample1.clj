@@ -1,5 +1,6 @@
 (ns onyx-samples.sample1
-  (:require [clojure.core.async :refer [chan >! <! <!! go]]
+  (:require [clojure.core.async :refer [chan >! >!! <! <!! go close!]]
+            [onyx.plugin.core-async :refer [take-segments!]]
             [com.stuartsierra.component :as component]
             [clojure.pprint :as pp]
             [onyx.api]))
@@ -14,7 +15,9 @@
 
 (def n-peers 1)
 
-(def workflow [[:in :out]])
+(def workflow
+  [[:in :inc]
+   [:inc :out]])
 
 (def batch-size 10)
 (def batch-timeout 50)
@@ -28,7 +31,12 @@
     :onyx/batch-timeout batch-timeout
     :onyx/batch-size batch-size
     :onyx/doc "Reads segments from a core.async channel"}
-   
+
+   {:onyx/name :inc
+    :onyx/type :function
+    :onyx/fn :onyx-samples.sample1/my-inc
+    :onyx/batch-size batch-size}
+    
    {:onyx/name :out
     :onyx/type :output
     :onyx/plugin :onyx.plugin.core-async/output
@@ -59,20 +67,20 @@
    {:lifecycle/task :in
     :lifecycle/calls :onyx.plugin.core-async/reader-calls}
    {:lifecycle/task :out
-    :lifecycle/calls :onyx.plugin.core-async/writer-calls}
+    :lifecycle/calls :onyx-tutorial-jp.tut1/out-calls}
    {:lifecycle/task :out
-    :lifecycle/calls :onyx-tutorial-jp.tut1/out-calls}])
+    :lifecycle/calls :onyx.plugin.core-async/writer-calls}
+   ])
 
 (def flow-conditions [])
 
 (def onyx-id (java.util.UUID/randomUUID))
 
-(def config
+(def env-config
   {:zookeeper/address "127.0.0.1:2190"
    :zookeeper/server? true
    :zookeeper.server/port 2190
    :onyx/id onyx-id})
-
 
 (def peer-config
   {:zookeeper/address "127.0.0.1:2190"
@@ -88,7 +96,7 @@
   (start [component]
     (println "Starting Onyx development environment")
     (let [onyx-id (java.util.UUID/randomUUID)
-          env (onyx.api/start-env config)
+          env (onyx.api/start-env env-config)
           peer-group (onyx.api/start-peer-group peer-config)
           peers (onyx.api/start-peers n-peers peer-group)]
       (assoc component :env env :peer-group peer-group
@@ -96,36 +104,46 @@
 
   (stop [component]
     (println "Stopping Onyx development environment")
-
     (doseq [v-peer (:peers component)]
       (onyx.api/shutdown-peer v-peer))
-    
     (onyx.api/shutdown-peer-group (:peer-group component))
     (onyx.api/shutdown-env (:env component))
-
     (assoc component :env nil :peer-group nil :peers nil)))
+
+(defn my-inc [segment]
+  (update-in segment [:n] inc))
 
 (defn init []
   (alter-var-root #'system (constantly (map->OnyxDevEnv {:n-peers n-peers}))))
 
 (defn start []
+  (when (nil? system)
+    (init))
   (alter-var-root #'system (fn [s] (component/start s))))
 
 (defn stop []
   (alter-var-root #'system (fn [s] (when s (component/stop s)))))
 
+
 (defn run []
-  (go
-    (dotimes [i 100]
-      (let [segment {:greeting (str "Hello" i)}]
-        (>! in-ch segment)))
-    (>! in-ch :done))
+  (dotimes [i 20]
+    (let [segment {:n i :greeting (str "Hello" i)}]
+      (>!! in-ch segment)))
+  (>!! in-ch :done)
+  (close! in-ch)
   (let [job {:workflow workflow
              :catalog catalog
              :lifecycles lifecycles
-             :flow-conditions flow-conditions
+             ;;:flow-conditions flow-conditions
              :task-scheduler :onyx.task-scheduler/balanced}]
     (println "Submitting")
     (onyx.api/submit-job peer-config job)))
 
+(defn -main [& args]
+  (init)
+  (start)
+  (run)
+  (pp/pprint (take-segments! out-ch))
+  (stop)
+  (shutdown-agents))
 
