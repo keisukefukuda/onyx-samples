@@ -84,7 +84,7 @@
 
 (def peer-config
   {:zookeeper/address "127.0.0.1:2190"
-   :onyx.peer/job-scheduler :onyx.job-scheduler/greedy
+   :onyx.peer/job-scheduler :onyx.job-scheduler/balanced
    :onyx.messaging/impl :aeron
    :onyx.messaging/peer-port 40200
    :onyx.messaging/bind-addr "localhost"
