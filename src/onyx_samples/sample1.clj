@@ -13,11 +13,11 @@
 
 (def system nil)
 
-(def n-peers 1)
-
 (def workflow
   [[:in :inc]
    [:inc :out]])
+
+(def n-peers (->> workflow (mapcat identity) set count))
 
 (def batch-size 10)
 (def batch-timeout 50)
@@ -63,11 +63,11 @@
 
 (def lifecycles
   [{:lifecycle/task :in
-    :lifecycle/calls :onyx-tutorial-jp.tut1/in-calls}
+    :lifecycle/calls :onyx-samples.sample1/in-calls}
    {:lifecycle/task :in
     :lifecycle/calls :onyx.plugin.core-async/reader-calls}
    {:lifecycle/task :out
-    :lifecycle/calls :onyx-tutorial-jp.tut1/out-calls}
+    :lifecycle/calls :onyx-samples.sample1/out-calls}
    {:lifecycle/task :out
     :lifecycle/calls :onyx.plugin.core-async/writer-calls}
    ])
@@ -75,16 +75,16 @@
 (def onyx-id (java.util.UUID/randomUUID))
 
 (def env-config
-  {:zookeeper/address "127.0.0.1:2190"
+  {:zookeeper/address "127.0.0.1:2188"
    :zookeeper/server? true
-   :zookeeper.server/port 2190
+   :zookeeper.server/port 2188
    :onyx/id onyx-id})
 
 (def peer-config
-  {:zookeeper/address "127.0.0.1:2190"
+  {:zookeeper/address "127.0.0.1:2188"
    :onyx.peer/job-scheduler :onyx.job-scheduler/balanced
    :onyx.messaging/impl :aeron
-   :onyx.messaging/peer-port 40201
+   :onyx.messaging/peer-port 40200
    :onyx.messaging/bind-addr "localhost"
    :onyx/id onyx-id})
 
@@ -128,7 +128,7 @@
     (let [segment {:n i :greeting (str "Hello" i)}]
       (>!! in-ch segment)))
   (>!! in-ch :done)
-  (close! in-ch)
+  ;;(close! in-ch)
   (let [job {:workflow workflow
              :catalog catalog
              :lifecycles lifecycles
