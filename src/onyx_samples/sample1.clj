@@ -117,11 +117,12 @@
 (defn start []
   (when (nil? system)
     (init))
-  (alter-var-root #'system (fn [s] (component/start s))))
+  (alter-var-root #'system (fn [s] (component/start s)))
+  nil)
 
 (defn stop []
-  (alter-var-root #'system (fn [s] (when s (component/stop s)))))
-
+  (alter-var-root #'system (fn [s] (when s (component/stop s))))
+  nil)
 
 (defn run []
   (dotimes [i 20]
