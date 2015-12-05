@@ -1,4 +1,4 @@
-(ns onyx-samples.sample2
+(ns onyx-samples.sample2-read-from-sql
   (:require [clojure.core.async :refer [chan >! >!! <! <!! go close!]]
             [onyx.api]
             [onyx.plugin.core-async :refer [take-segments!]]
@@ -38,7 +38,7 @@
    
    {:onyx/name :my-func
     :onyx/type :function
-    :onyx/fn :onyx-samples.sample2/my-func
+    :onyx/fn :onyx-samples.sample2-read-from-sql/my-func
     :onyx/batch-size batch-size}
     
    {:onyx/name :out
@@ -51,9 +51,9 @@
    ])
 
 (def lifecycles
-  [{:lifecycle/task :in  :lifecycle/calls :onyx-samples.sample2/in-calls}
+  [{:lifecycle/task :in  :lifecycle/calls :onyx-samples.sample2-read-from-sql/in-calls}
    {:lifecycle/task :in  :lifecycle/calls :onyx.plugin.core-async/reader-calls}
-   {:lifecycle/task :out :lifecycle/calls :onyx-samples.sample2/out-calls}
+   {:lifecycle/task :out :lifecycle/calls :onyx-samples.sample2-read-from-sql/out-calls}
    {:lifecycle/task :out :lifecycle/calls :onyx.plugin.core-async/writer-calls}])
 
 (defn inject-out-ch [event lifecycle]
@@ -144,8 +144,7 @@
              :lifecycles lifecycles
              :task-scheduler :onyx.task-scheduler/balanced}]
     (println "Submitting")
-    (onyx.api/submit-job peer-config job)
-    (take-segments! out-ch)))
+    (onyx.api/submit-job peer-config job)))
 
 (defn init []
   (alter-var-root #'system (constantly (map->OnyxDevEnv {:n-peers n-peers}))))
@@ -159,3 +158,12 @@
 (defn stop []
   (alter-var-root #'system (fn [s] (component/stop s)))
   nil)
+
+(defn -main [& args]
+  (init)
+  (start)
+  (submit-jobs)
+  (pp/pprint (take-segments! out-ch))
+  (stop)
+  (shutdown-agents))
+

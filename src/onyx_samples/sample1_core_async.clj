@@ -1,4 +1,4 @@
-(ns onyx-samples.sample1
+(ns onyx-samples.sample1-core-async
   (:require [clojure.core.async :refer [chan >! >!! <! <!! go close!]]
             [onyx.plugin.core-async :refer [take-segments!]]
             [com.stuartsierra.component :as component]
@@ -34,7 +34,7 @@
 
    {:onyx/name :inc
     :onyx/type :function
-    :onyx/fn :onyx-samples.sample1/my-inc
+    :onyx/fn :onyx-samples.sample1-core-async/my-inc
     :onyx/batch-size batch-size}
     
    {:onyx/name :out
@@ -63,11 +63,11 @@
 
 (def lifecycles
   [{:lifecycle/task :in
-    :lifecycle/calls :onyx-samples.sample1/in-calls}
+    :lifecycle/calls :onyx-samples.sample1-core-async/in-calls}
    {:lifecycle/task :in
     :lifecycle/calls :onyx.plugin.core-async/reader-calls}
    {:lifecycle/task :out
-    :lifecycle/calls :onyx-samples.sample1/out-calls}
+    :lifecycle/calls :onyx-samples.sample1-core-async/out-calls}
    {:lifecycle/task :out
     :lifecycle/calls :onyx.plugin.core-async/writer-calls}
    ])
@@ -124,12 +124,11 @@
   (alter-var-root #'system (fn [s] (when s (component/stop s))))
   nil)
 
-(defn run []
+(defn submit-jobs []
   (dotimes [i 20]
     (let [segment {:n i :greeting (str "Hello" i)}]
       (>!! in-ch segment)))
   (>!! in-ch :done)
-  ;;(close! in-ch)
   (let [job {:workflow workflow
              :catalog catalog
              :lifecycles lifecycles
@@ -140,7 +139,7 @@
 (defn -main [& args]
   (init)
   (start)
-  (run)
+  (submit-jobs)
   (pp/pprint (take-segments! out-ch))
   (stop)
   (shutdown-agents))
